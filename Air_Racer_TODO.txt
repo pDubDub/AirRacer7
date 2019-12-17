@@ -1,0 +1,29 @@
+change scores.txt to save/load an array/dictionary of pylon:time pairs
+
+* might try angling headings of turning plane sprites?
+
+
+
+might reduce x/y movement rates
+
+
+
+• might make the finish line an extra pylon in the form of a gate?
+
+• at last pylon. drop plane speed to zero
+
+• altitude
+	• throttle greater than altitude should climb, and vice versa
+
+* polish dx
+	• make ramp up, so plane has inertia in corners
+	• make dx a little dependent on speed
+		(but probably less dx at speed?)
+
+* add trees
+	• maybe farmhouses?
+
+• might use Opp class for opponent (obstacle) planes
+
+
+
