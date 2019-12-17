@@ -9,6 +9,10 @@
     based on paper plane / mail pilot example
     turned into airplane racer slalom game
         a bit inspired by an old Atari game titled Sky Jinks
+
+    v 08 - to add save/load best time to file
+        - also corrected fonts for Mac
+        - also began key events for adjusting game length and difficulty
 """
 
 import sys
@@ -178,6 +182,7 @@ class Pylon(pygame.sprite.Sprite):
     def update(self, speed, plane_x, plane_y, pylons_to_go, pylons_missed, left_x, right_x):
         self.rect.bottom += speed
         # reset to top
+        # TODO - there is a weird glitch in the aftergame, where eventually, the pylons pass by again, even though they should still be at the bottom.
         if self.rect.top >= 800 and self.pylon_number > 2:
             self.rect.top -= 900
             self.pylon_number -= 2
@@ -191,6 +196,7 @@ class Pylon(pygame.sprite.Sprite):
                 self.image = self.image_pylon_END
             self.rect.centerx = self.x
             self.isPassed = False
+            # TODO - to fix, might move self.pylon_number > 2: to a nested IF, with an else that moves x to -500.
         # pass detection
         if plane_y < self.rect.bottom and not self.isPassed:
             # TODO - I could probably make the flyby sound louder based on how close you come to pylon
@@ -316,6 +322,27 @@ class PlaneShadow(pygame.sprite.Sprite):
 #             self.dx *= -1
 
 
+# implementing a high score file to remember best time
+# https://techwithtim.net/tutorials/game-development-with-python/side-scroller-pygame/scoring-end-screen/
+def read_best_time():
+    f = open('scores.txt', 'r')      # opens the file in read mode
+    file = f.readlines()            # reads all the lines in as a list
+    best_time = float(file[0])      # gets the first line of the file
+    return best_time
+
+
+def save_best_time(best_time):
+    f = open('scores.txt', 'r')      # opens the file in read mode
+    file = f.readlines()            # reads all the lines in as a list
+    last = float(file[0])           # gets the first line of the file
+
+    if last > int(best_time):       # sees if the current score is greater than the previous best
+        f.close()                   # closes/saves the file
+        file = open('scores.txt', 'w')  # reopens it in write mode
+        file.write(str(best_time))  # writes the best score
+        file.close()                # closes/saves the file
+
+
 def game():
     pygame.display.set_caption('"Air Racer 7" - CIS151 Program 5: PyGame 2D Arcade Shooter  - Patrick Wheeler')
 
@@ -347,15 +374,16 @@ def game():
     cshadow_sprites = pygame.sprite.Group(cloud_shadow)
 
     # for onscreen text
-    font_big = pygame.font.SysFont('georgia', 50, True, False)
-    font_small = pygame.font.SysFont('georgia', 30, False, True)
-    # TODO - apparently a known pygame vs Mac issue, leading pygame to fail to find/load proper font.
+    #    first font name recognized by Windows, second recognized by Mac
+    font_big = pygame.font.SysFont("georgia, Georgia.ttf", 50, False, False)
+    font_small = pygame.font.SysFont("georgia, Georgia.ttf", 30, False, True)
 
     # timing and scoring
     start_time = 0
     clock_is_running = False
     elapsed_time = start_time
-    best_time = 0
+    # best_time = 0
+    best_time = read_best_time()
     difference = 0
 
     clock = pygame.time.Clock()
@@ -374,15 +402,25 @@ def game():
                     pygame.display.quit()
                     pygame.quit()
                     sys.exit()
-                elif is_initially_paused and event.key == pygame.K_SPACE:
-                    # 'start' command
-                    is_initially_paused = False
-                    launch_state = False
-                    start_time = timer()
-                    clock_is_running = True
-                    plane.engine_sound_low.play(loops=-1, maxtime=0, fade_ms=500)
-                    plane.engine_sound_high.set_volume(0)
-                    plane.engine_sound_high.play(loops=-1, maxtime=0, fade_ms=500)
+                elif is_initially_paused:
+                    if event.key == pygame.K_SPACE:
+                        # 'start' command
+                        is_initially_paused = False
+                        launch_state = False
+                        start_time = timer()
+                        clock_is_running = True
+                        plane.engine_sound_low.play(loops=-1, maxtime=0, fade_ms=500)
+                        plane.engine_sound_high.set_volume(0)
+                        plane.engine_sound_high.play(loops=-1, maxtime=0, fade_ms=500)
+                    elif event.key == pygame.K_LEFT:
+                        # TODO - future home of game options (increment pylons by 5, easy/med/advanced
+                        print("left")
+                    elif event.key == pygame.K_RIGHT:
+                        print("right")
+                    elif event.key == pygame.K_UP:
+                        print("up")
+                    elif event.key == pygame.K_DOWN:
+                        print("down")
                 elif not clock_is_running and event.key == pygame.K_r:
                     # 'reset' command
                     pylons_to_go_this_game = new_game_pylon_total
@@ -453,6 +491,7 @@ def game():
                 difference = elapsed_time - best_time
                 if elapsed_time < best_time or best_time == 0:
                     best_time = elapsed_time
+                    save_best_time(best_time)
                 # should also land the airplane now
                 # TODO - land the airplane
                 """
@@ -501,7 +540,7 @@ def game():
         screen.blit(onscreen3_misses, (590 - onscreen3_width, 760))
         screen.blit(onscreen4_instruct, (300 - (onscreen4_width / 2), 600))
         screen.blit(onscreen5_best, (590 - onscreen5_width, 10))
-        screen.blit(onscreen6_diff, (590 - onscreen6_width, 35))
+        screen.blit(onscreen6_diff, (590 - onscreen6_width, 38))
         if launch_state:
             screen.blit(onscreen_logo, (300 - (onscreen_logo.get_width() / 2), 400))
 
