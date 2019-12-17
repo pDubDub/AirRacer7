@@ -1,4 +1,4 @@
-change scores.txt to save/load an array/dictionary of pylon:time pairs
+• change scores.txt to save/load an array/dictionary of pylon:time pairs
 
 * might try angling headings of turning plane sprites?
 
