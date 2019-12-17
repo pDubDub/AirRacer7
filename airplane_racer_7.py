@@ -325,30 +325,30 @@ class PlaneShadow(pygame.sprite.Sprite):
 # implementing a high score file to remember best time
 # https://techwithtim.net/tutorials/game-development-with-python/side-scroller-pygame/scoring-end-screen/
 def read_best_time():
-    f = open('scores.txt', 'r')      # opens the file in read mode
-    file = f.readlines()            # reads all the lines in as a list
-    best_time = float(file[0])      # gets the first line of the file
+    f = open('scores.txt', 'r')                 # opens the file in read mode
+    file = f.readlines()                        # reads all the lines in as a list
+    best_time = float(file[0])                  # gets the first line of the file
     return best_time
 
 
 def save_best_time(best_time):
-    f = open('scores.txt', 'r')      # opens the file in read mode
-    file = f.readlines()            # reads all the lines in as a list
-    last = float(file[0])           # gets the first line of the file
+    f = open('scores.txt', 'r')                 # opens the file in read mode
+    file = f.readlines()                        # reads all the lines in as a list
+    last = float(file[0])                       # gets the first line of the file
 
-    if last > int(best_time):       # sees if the current score is greater than the previous best
-        f.close()                   # closes/saves the file
-        file = open('scores.txt', 'w')  # reopens it in write mode
-        file.write(str(best_time))  # writes the best score
-        file.close()                # closes/saves the file
+    if last > int(best_time):                   # sees if the current score is greater than the previous best
+        f.close()                               # closes/saves the file
+        file = open('scores.txt', 'w')          # reopens it in write mode
+        file.write(str(best_time))              # writes the best score
+        file.close()                            # closes/saves the file
 
 
 def game():
     pygame.display.set_caption('"Air Racer 7" - CIS151 Program 5: PyGame 2D Arcade Shooter  - Patrick Wheeler')
 
     is_initially_paused = True
-    launch_state = True
-    # pygame.key.set_repeat()               # not used
+    launch_state = True                         # used for game logotype display only on game launch
+    # pygame.key.set_repeat()                   # not used
     new_game_pylon_total = 15
     pylons_to_go_this_game = new_game_pylon_total
     onscreen_logo = pygame.image.load("images/logotype.png")
@@ -413,7 +413,7 @@ def game():
                         plane.engine_sound_high.set_volume(0)
                         plane.engine_sound_high.play(loops=-1, maxtime=0, fade_ms=500)
                     elif event.key == pygame.K_LEFT:
-                        # TODO - future home of game options (increment pylons by 5, easy/med/advanced
+                        # TODO - future home of game options (increment pylons by 5, easy/med/advanced)
                         print("left")
                     elif event.key == pygame.K_RIGHT:
                         print("right")
@@ -519,9 +519,11 @@ def game():
         else:
             text_4_instructions = ""
         text_5_best = "Best Time: {0:.2f}".format(best_time)
-        text_6_diff = "({0:.2f})".format(difference)
-        # text_6_diff = "(+{0:.2f})".format(difference) if difference >=0 else "({0:.2f})".format(difference)
-        # TODO - would be nice if didn't show a difference on first run, since Best is then 0
+        # time difference only shows AFTER a run, and clears when reset for another run
+        if clock_is_running or is_initially_paused:
+            text_6_diff = ""
+        else:
+            text_6_diff = "(+{0:.2f})".format(difference) if difference >= 0 else "({0:.2f})".format(difference)
 
         onscreen1_time = font_big.render(text_1_time, True, (255, 255, 255))
         onscreen2_pylons = font_small.render(text_2_pylons, True, (255, 255, 255))
@@ -548,7 +550,7 @@ def game():
 
 
 # main
-#   pre-existing main() from 'paper_airplane' base project. I never use done_playing bool.
+#   pre-existing main() from 'paper_airplane' base project. I never change the done_playing bool.
 def main():
     done_playing = False
     # score = 0
