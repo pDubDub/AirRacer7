@@ -3,13 +3,14 @@
 
     CIS151 - MCC - Fall 2019
 
-    Patrick Wheeler PAT2100606
+    Patrick Wheeler
     December 2019
 
     based on paper plane / mail pilot example
     turned into airplane racer slalom game
+        a bit inspired by an old Atari game titled Sky Jinks
 """
-    
+
 import sys
 import pygame
 import random
@@ -27,14 +28,14 @@ class Plane(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
 
-        self.PA_FOLD = 0
-        self.PA_ROLL_LEFT = 1
-        self.PA_ROLL_RIGHT = 2
-        self.PA_FLY_STRAIGHT = 3
+        # self.PA_FOLD = 0
+        # self.PA_ROLL_LEFT = 1
+        # self.PA_ROLL_RIGHT = 2
+        # self.PA_FLY_STRAIGHT = 3
 
         # self.imgList = []
         # self.loadPics()
-        self.dir = self.PA_FLY_STRAIGHT
+        # self.dir = self.PA_FLY_STRAIGHT
         # self.frame = 0
 
         self.image_LEVEL = pygame.image.load("images/GeeBee100.png")
@@ -49,9 +50,10 @@ class Plane(pygame.sprite.Sprite):
         # tranColor = self.image.get_at((1, 1))
         # self.image.set_colorkey(tranColor)
         self.rect = self.image.get_rect()
+        self.stage_plane()
         self.x = 300                        # sets the start point in screen center
         self.y = 700
-        self.rect.center = (self.x, self.y)
+        # self.rect.center = (self.x, self.y)
         # self.delay = 3                      # unknown
         # self.pause = self.delay             # unknown
         self.speed = 1                      # initially effects cloud speed while paused
@@ -59,8 +61,8 @@ class Plane(pygame.sprite.Sprite):
         self.drag = 0
         self.dx = 0
         self.dy = 0
-        self.distance = 0
-        self.pylons_to_go = 10              # defines length of game
+        # self.distance = 0
+        # self.pylons_to_go = 10              # defines length of game
         self.pylons_missed = 0
         self.mask = pygame.mask.from_surface(self.image)
 
@@ -103,7 +105,6 @@ class Plane(pygame.sprite.Sprite):
         # self.distance += int(self.speed)
 
         # changing plane graphic with cornering
-        print(self.dx)
         if self.dx < -25:                           # going left
             self.image = self.image_LEFT30
         elif self.dx < -10:
@@ -118,6 +119,13 @@ class Plane(pygame.sprite.Sprite):
             self.image = self.image_RIGHT30
         else:                                       # going more or less straight
             self.image = self.image_LEVEL
+
+    def stage_plane(self):
+        self.pylons_missed = 0
+        self.x = 300                                # sets the start point in screen center
+        self.y = 700
+        self.rect.center = (self.x, self.y)
+        self.speed = 1
 
 
 # the ground (background)
@@ -141,7 +149,7 @@ class Ground(pygame.sprite.Sprite):
 
 
 class Pylon(pygame.sprite.Sprite):
-    def __init__(self, side):
+    def __init__(self, side, total_pylons):
         pygame.sprite.Sprite.__init__(self)
         # preloading alternate images
         self.image_pylon_LEFT = pygame.image.load("images/pylon_L.png")
@@ -150,49 +158,61 @@ class Pylon(pygame.sprite.Sprite):
         self.image_pylon_MISS = pygame.image.load("images/pylon_MISS.png")
         self.image_pylon_END = pygame.image.load("images/pylon_END.png")
         self.side = side
-        if self.side == 0:
-            self.image = self.image_pylon_LEFT
-            self.x = random.randrange(100, 300, 1)
-            self.y = 0
-        else:
-            self.image = self.image_pylon_RIGHT
-            self.x = random.randrange(300, 500, 1)
-            self.y = -500
+        self.pylon_number = total_pylons
+        self.x = 300
+        self.starting_y = -100
+        self.image = self.image_pylon_LEFT
         self.rect = self.image.get_rect()
-        self.rect.center = (self.x, self.y)
         self.isPassed = False
         self.wasGood = False
         self.wasMissed = False
         self.mask = pygame.mask.from_surface(self.image)
+        self.reset_pylon(total_pylons)
 
     def update(self, speed, plane_x, plane_y, pylons_to_go, pylons_missed, left_x, right_x):
         self.rect.bottom += speed
         # reset to top
-        if self.rect.top >= 800 and pylons_to_go > 1:
-            self.rect.top = -80
+        if self.rect.top >= 800 and self.pylon_number > 2:
+            self.rect.top -= 900
+            self.pylon_number -= 2
             if self.side == 0:
                 self.x = random.randrange(100, right_x, 1)
                 self.image = self.image_pylon_LEFT
             else:
                 self.x = random.randrange(left_x, 500, 1)
                 self.image = self.image_pylon_RIGHT
-            if pylons_to_go <= 2:
+            if self.pylon_number == 1:
                 self.image = self.image_pylon_END
             self.rect.centerx = self.x
             self.isPassed = False
         # pass detection
         if plane_y < self.rect.bottom and not self.isPassed:
+            print(self.pylon_number)
             self.isPassed = True
             if (self.side == 0 and plane_x < self.x) or (self.side == 1 and plane_x > self.x):
                 self.image = self.image_pylon_OK
-                # pylons_to_go -= 1
                 self.wasGood = True
-                self.wasMissed = False
             else:
                 self.image = self.image_pylon_MISS
-                # pylons_missed += 1
                 self.wasMissed = True
-                self.wasGood = False
+
+    def reset_pylon(self, total_pylons):
+        if self.side == 0:
+            self.image = self.image_pylon_LEFT
+            self.x = random.randrange(100, 300, 1)
+            self.starting_y = 0
+            self.pylon_number = total_pylons
+        else:
+            self.image = self.image_pylon_RIGHT
+            self.x = random.randrange(300, 500, 1)
+            self.starting_y = -500
+            # had to manually fudge this -500 to get proper pylon spacing
+            self.pylon_number = total_pylons - 1
+        self.rect = self.image.get_rect()
+        self.rect.center = (self.x, self.starting_y)
+        self.isPassed = False
+        self.wasGood = False
+        self.wasMissed = False
 
 
 # cloud objects and shadows
@@ -200,9 +220,14 @@ class Cloud(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.image.load("images/cloud_v2.png")
-        self.dx = random.randrange(0, 3, 2) - 1
-        # TODO - would be good if a cloud moving left did not spawn on far left side of screen
         self.x = random.randrange(-50, 650, 10)
+        # if cloud spawns on left, move right. if right, move left. If middle, choose randomly.
+        if self.x < 50:
+            self.dx = 1
+        elif self.x > 550:
+            self.dx = -1
+        else:
+            self.dx = random.randrange(0, 3, 2) - 1
         self.y = random.randrange(0, 400, 10)
         self.rect = self.image.get_rect()
         self.rect.center = (self.x, self.y)
@@ -289,7 +314,9 @@ def game():
     pygame.display.set_caption("Program 5 - PyGame 2D Arcade Shooter - Wheeler")
 
     is_initially_paused = True
-    pygame.key.set_repeat()
+    # pygame.key.set_repeat()
+    new_game_pylon_total = 11
+    pylons_to_go_this_game = new_game_pylon_total
 
     # create my sprites
     background = pygame.Surface(screen.get_size())
@@ -298,8 +325,8 @@ def game():
     the_ground = Ground()
     plane = Plane()
     plane_shadow = PlaneShadow(plane.x, plane.y)
-    pylon_left = Pylon(0)
-    pylon_right = Pylon(1)
+    pylon_left = Pylon(0, pylons_to_go_this_game)
+    pylon_right = Pylon(1, pylons_to_go_this_game)
     cloud = Cloud()
     cloud_shadow = CloudShadow(cloud.x, cloud.y)
 
@@ -315,10 +342,12 @@ def game():
     font_big = pygame.font.SysFont('georgia', 50, True, False)
     font_small = pygame.font.SysFont('georgia', 30, False, True)
 
+    # timing and scoring
     start_time = 0
     clock_is_running = False
     elapsed_time = start_time
     best_time = 0
+    difference = 0
 
     clock = pygame.time.Clock()
     keep_going = True
@@ -341,30 +370,16 @@ def game():
                     clock_is_running = True
                 # if not clock_is_running and key == pygame.K_r then reset the game
                 elif not clock_is_running and event.key == pygame.K_r:
-                    # TODO - extract common operations into reset methods where possible.
-                    # print("Reset")
-                    plane.pylons_to_go = 10
-                    # TODO - extract this value to a single variable instead of being hardcoded twice
-                    plane.pylons_missed = 0
-                    plane.x = 300
-                    plane.y = 700
-                    plane.rect.center = (300, 700)
-                    plane.speed = 1
+                    pylons_to_go_this_game = new_game_pylon_total
+                    plane.stage_plane()
                     # move shadow
                     pshadow_sprites.update(plane.x, plane.y, plane.speed)
                     # reset pylons
-                    pylon_left.x = random.randrange(100, 300, 1)
-                    pylon_left.y = -20
-                    pylon_left.rect.center = (pylon_left.x, pylon_left.y)
-                    pylon_left.image = pylon_left.image_pylon_LEFT
-                    pylon_left.isPassed = False
-                    pylon_right.x = random.randrange(100, 300, 1)
-                    pylon_right.y = -520
-                    pylon_right.rect.center = (pylon_right.x, pylon_right.y)
-                    pylon_right.image = pylon_right.image_pylon_RIGHT
-                    pylon_right.isPassed = False
+                    pylon_left.reset_pylon(pylons_to_go_this_game)
+                    pylon_right.reset_pylon(pylons_to_go_this_game)
                     # reset timer
                     elapsed_time = 0
+                    difference = 0
                     is_initially_paused = True
 
         # I let cloud animated even when game is initially paused
@@ -376,7 +391,7 @@ def game():
             plane_sprites.update()
             pshadow_sprites.update(plane.x, plane.y, plane.speed)
             ground_sprites.update(plane.speed)
-            pylon_sprites.update(plane.speed, plane.x, plane.y, plane.pylons_to_go, plane.pylons_missed, pylon_left.x, pylon_right.x)
+            pylon_sprites.update(plane.speed, plane.x, plane.y, pylons_to_go_this_game, plane.pylons_missed, pylon_left.x, pylon_right.x)
 
             # collision detection between plane and pylons
             if pygame.sprite.spritecollide(plane, pylon_sprites, False, pygame.sprite.collide_mask):
@@ -388,17 +403,26 @@ def game():
 
             # adjusting the score if pylons are passed or missed
             if pylon_left.wasGood or pylon_right.wasGood:
-                plane.pylons_to_go -= 1
+                pylons_to_go_this_game -= 1
+                # print("pylon passed")
+                # print("{0} pylons to go, plane at y = {1}".format(pylons_to_go_this_game, plane.y))
+                # print("Pylon 0 is at {0} amd pylon 1 is at {1}".format(pylon_left.rect.top, pylon_right.rect.top))
+                # print("Distance between pylons = {0}".format(abs(pylon_left.rect.top - pylon_right.rect.top)))
                 pylon_left.wasGood = False
                 pylon_right.wasGood = False
             elif pylon_left.wasMissed or pylon_right.wasMissed:
-                plane.pylons_to_go -= 1
+                pylons_to_go_this_game -= 1
                 plane.pylons_missed += 1
                 pylon_left.wasMissed = False
                 pylon_right.wasMissed = False
 
             # TODO - seen a BUG where you can miss the last pylon, it doesn't count as passed, and the timer never stops,
             #           but could not reproduce.
+            # TODO - also seen a BUG where sometimes after resets, the last pylon never spawns
+            #
+            # I think I've fixed this by evening out pylon spacing
+            #
+            # STILL A BUG
 
             # Timing and Race Completion
             now_time = timer()
@@ -408,8 +432,9 @@ def game():
                 # adds 10 second penalty for missing a pylon
                 # reduced penalty to perhaps 5.
             # stops timer when reached the last pylon
-            if plane.pylons_to_go <= 0:
+            if pylons_to_go_this_game <= 0 and clock_is_running:
                 clock_is_running = False
+                difference = elapsed_time - best_time
                 if elapsed_time < best_time or best_time == 0:
                     best_time = elapsed_time
                 # should also land the airplane now
@@ -430,7 +455,7 @@ def game():
 
         # zero = 0
         onscreen_1 = "Time: {0:.2f}".format(elapsed_time)
-        onscreen_2 = "Pylons Left: {0}".format(plane.pylons_to_go)
+        onscreen_2 = "Pylons Left: {0}".format(pylons_to_go_this_game)
         onscreen_3 = "Pylons Missed: {0}".format(plane.pylons_missed)
         if is_initially_paused and not clock_is_running:
             onscreen_4 = "Press 'SPACE' to start"
@@ -439,6 +464,8 @@ def game():
         else:
             onscreen_4 = ""
         onscreen_5 = "Best Time: {0:.2f}".format(best_time)
+        # onscreen_6 = "(+{0:.2f})".format(difference) if difference >=0 else "(-{0:.2f})".format(difference)
+        onscreen_6 = "({0:.2f})".format(difference)
 
         text1_time = font_big.render(onscreen_1, True, (255, 255, 255))
         text2_pylons = font_small.render(onscreen_2, True, (255, 255, 255))
@@ -448,12 +475,15 @@ def game():
         text4_width = text4_begin.get_width()
         text5_best = font_small.render(onscreen_5, True, (255, 255, 255))
         text5_width = text5_best.get_width()
+        text6_diff = font_small.render(onscreen_6, True, (255, 255, 255))
+        text6_width = text6_diff.get_width()
 
         screen.blit(text1_time, (10, 10))
         screen.blit(text2_pylons, (10, 760))
         screen.blit(text3_misses, (590 - text3_width, 760))
         screen.blit(text4_begin, (300 - (text4_width / 2), 400))
         screen.blit(text5_best, (590 - text5_width, 10))
+        screen.blit(text6_diff, (590 - text6_width, 35))
 
         pygame.display.flip()
     
