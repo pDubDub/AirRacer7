@@ -72,6 +72,9 @@ class Plane(pygame.sprite.Sprite):
         #   +speed -> greater cooling... to a point
         self.engine_temp = 0
 
+        self.engine_sound_low = pygame.mixer.Sound("sounds/s6b_engn1.ogg")
+        self.engine_sound_high = pygame.mixer.Sound("sounds/s6b_engn1_high.ogg")
+
     def update(self):
         mouse_x, mouse_y = pygame.mouse.get_pos()
         # changed to move TOWARDS cursor, not automatically track it.
@@ -169,6 +172,9 @@ class Pylon(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.reset_pylon(total_pylons)
 
+        self.flyby = pygame.mixer.Sound("sounds/s6b_pass.ogg")
+        self.flyby.set_volume(0.30)
+
     def update(self, speed, plane_x, plane_y, pylons_to_go, pylons_missed, left_x, right_x):
         self.rect.bottom += speed
         # reset to top
@@ -187,7 +193,8 @@ class Pylon(pygame.sprite.Sprite):
             self.isPassed = False
         # pass detection
         if plane_y < self.rect.bottom and not self.isPassed:
-            print(self.pylon_number)
+            # TODO - I could probably make the flyby sound louder based on how close you come to pylon
+            self.flyby.play()
             self.isPassed = True
             if (self.side == 0 and plane_x < self.x) or (self.side == 1 and plane_x > self.x):
                 self.image = self.image_pylon_OK
@@ -256,14 +263,6 @@ class CloudShadow(pygame.sprite.Sprite):
 
 
 # plane shadow
-"""
-        - make throttle add to or subtract from altitude (not directly linked)
-            - or else speed
-        - altitude determins shadow location vs. plane.x/y
-"""
-
-
-# TODO - might alter plane shadow to read plane.altitude, and make d_altitude based on throttle?
 class PlaneShadow(pygame.sprite.Sprite):
     def __init__(self, plane_x, plane_y):
         pygame.sprite.Sprite.__init__(self)
@@ -276,11 +275,18 @@ class PlaneShadow(pygame.sprite.Sprite):
         self.difference = plane_speed + 5
         self.rect.center = (plane_x + self.difference * 2, plane_y + self.difference * 2)
 
+    # TODO - might alter plane shadow to read plane.altitude, and make d_altitude based on throttle?
+    """
+            - make throttle add to or subtract from altitude (not directly linked)
+                - or else speed
+            - altitude determins shadow location vs. plane.x/y
+    """
+
 
 # TODO - future - create tree objects
 # TODO - future - create building objects?
 # TODO - future - might change Opp class to create opponent racers
-# class Opp(pygame.sprite.Sprite):
+# class Opp(pygame.sprite.Sprite):                          # not used
 #     def __init__(self):
 #         pygame.sprite.Sprite.__init__(self)
 #
@@ -311,12 +317,14 @@ class PlaneShadow(pygame.sprite.Sprite):
 
 
 def game():
-    pygame.display.set_caption("Program 5 - PyGame 2D Arcade Shooter - Wheeler")
+    pygame.display.set_caption('"Air Racer 7" - CIS151 Program 5: PyGame 2D Arcade Shooter  - Patrick Wheeler')
 
     is_initially_paused = True
-    # pygame.key.set_repeat()
-    new_game_pylon_total = 11
+    launch_state = True
+    # pygame.key.set_repeat()               # not used
+    new_game_pylon_total = 15
     pylons_to_go_this_game = new_game_pylon_total
+    onscreen_logo = pygame.image.load("images/logotype.png")
 
     # create my sprites
     background = pygame.Surface(screen.get_size())
@@ -341,6 +349,7 @@ def game():
     # for onscreen text
     font_big = pygame.font.SysFont('georgia', 50, True, False)
     font_small = pygame.font.SysFont('georgia', 30, False, True)
+    # TODO - apparently a known pygame vs Mac issue, leading pygame to fail to find/load proper font.
 
     # timing and scoring
     start_time = 0
@@ -361,15 +370,21 @@ def game():
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
                 if (event.mod & pygame.KMOD_META and event.key == pygame.K_q) or event.key == pygame.K_ESCAPE:
+                    # 'quit' command
                     pygame.display.quit()
                     pygame.quit()
                     sys.exit()
                 elif is_initially_paused and event.key == pygame.K_SPACE:
+                    # 'start' command
                     is_initially_paused = False
+                    launch_state = False
                     start_time = timer()
                     clock_is_running = True
-                # if not clock_is_running and key == pygame.K_r then reset the game
+                    plane.engine_sound_low.play(loops=-1, maxtime=0, fade_ms=500)
+                    plane.engine_sound_high.set_volume(0)
+                    plane.engine_sound_high.play(loops=-1, maxtime=0, fade_ms=500)
                 elif not clock_is_running and event.key == pygame.K_r:
+                    # 'reset' command
                     pylons_to_go_this_game = new_game_pylon_total
                     plane.stage_plane()
                     # move shadow
@@ -382,12 +397,14 @@ def game():
                     difference = 0
                     is_initially_paused = True
 
-        # I let cloud animated even when game is initially paused
+        # I let cloud animate even when game is initially paused
         cloud_sprites.update(plane.speed)
         cshadow_sprites.update(cloud.x, cloud.y)
 
         # embedded updates in an IF so game doesn't start until hitting 'space' to start
         if not is_initially_paused:
+            plane.engine_sound_low.set_volume(0.10)
+            plane.engine_sound_high.set_volume((plane.speed - 5) / 75)
             plane_sprites.update()
             pshadow_sprites.update(plane.x, plane.y, plane.speed)
             ground_sprites.update(plane.speed)
@@ -404,10 +421,6 @@ def game():
             # adjusting the score if pylons are passed or missed
             if pylon_left.wasGood or pylon_right.wasGood:
                 pylons_to_go_this_game -= 1
-                # print("pylon passed")
-                # print("{0} pylons to go, plane at y = {1}".format(pylons_to_go_this_game, plane.y))
-                # print("Pylon 0 is at {0} amd pylon 1 is at {1}".format(pylon_left.rect.top, pylon_right.rect.top))
-                # print("Distance between pylons = {0}".format(abs(pylon_left.rect.top - pylon_right.rect.top)))
                 pylon_left.wasGood = False
                 pylon_right.wasGood = False
             elif pylon_left.wasMissed or pylon_right.wasMissed:
@@ -416,13 +429,14 @@ def game():
                 pylon_left.wasMissed = False
                 pylon_right.wasMissed = False
 
-            # TODO - seen a BUG where you can miss the last pylon, it doesn't count as passed, and the timer never stops,
-            #           but could not reproduce.
-            # TODO - also seen a BUG where sometimes after resets, the last pylon never spawns
-            #
-            # I think I've fixed this by evening out pylon spacing
-            #
-            # STILL A BUG
+            """
+                I was seeing a random BUG where you could miss the last pylon, it would't count as passed, 
+                    and the timer never stops, but could not reproduce.
+                    
+                I was also encountering a BUG where sometimes the last pylon never spawned
+                
+                I think I've fixed this by adding a pylon_number property to the pylon class
+            """
 
             # Timing and Race Completion
             now_time = timer()
@@ -433,6 +447,8 @@ def game():
                 # reduced penalty to perhaps 5.
             # stops timer when reached the last pylon
             if pylons_to_go_this_game <= 0 and clock_is_running:
+                plane.engine_sound_low.fadeout(8000)
+                plane.engine_sound_high.fadeout(400)
                 clock_is_running = False
                 difference = elapsed_time - best_time
                 if elapsed_time < best_time or best_time == 0:
@@ -453,47 +469,47 @@ def game():
         pylon_sprites.draw(screen)
         cloud_sprites.draw(screen)
 
-        # zero = 0
-        onscreen_1 = "Time: {0:.2f}".format(elapsed_time)
-        onscreen_2 = "Pylons Left: {0}".format(pylons_to_go_this_game)
-        onscreen_3 = "Pylons Missed: {0}".format(plane.pylons_missed)
+        # onscreen text
+        text_1_time = "Time: {0:.2f}".format(elapsed_time)
+        text_2_pylons = "Pylons Left: {0}".format(pylons_to_go_this_game)
+        text_3_misses = "Pylons Missed: {0}".format(plane.pylons_missed)
         if is_initially_paused and not clock_is_running:
-            onscreen_4 = "Press 'SPACE' to start"
+            text_4_instructions = "Press 'SPACE' to start"
         elif not clock_is_running:
-            onscreen_4 = "Press 'R' to reset"
+            text_4_instructions = "Press 'R' to reset"
         else:
-            onscreen_4 = ""
-        onscreen_5 = "Best Time: {0:.2f}".format(best_time)
-        # onscreen_6 = "(+{0:.2f})".format(difference) if difference >=0 else "(-{0:.2f})".format(difference)
-        onscreen_6 = "({0:.2f})".format(difference)
+            text_4_instructions = ""
+        text_5_best = "Best Time: {0:.2f}".format(best_time)
+        text_6_diff = "({0:.2f})".format(difference)
+        # text_6_diff = "(+{0:.2f})".format(difference) if difference >=0 else "({0:.2f})".format(difference)
+        # TODO - would be nice if didn't show a difference on first run, since Best is then 0
 
-        text1_time = font_big.render(onscreen_1, True, (255, 255, 255))
-        text2_pylons = font_small.render(onscreen_2, True, (255, 255, 255))
-        text3_misses = font_small.render(onscreen_3, True, (255, 255, 255))
-        text3_width = text3_misses.get_width()
-        text4_begin = font_small.render(onscreen_4, True, (255, 255, 255))
-        text4_width = text4_begin.get_width()
-        text5_best = font_small.render(onscreen_5, True, (255, 255, 255))
-        text5_width = text5_best.get_width()
-        text6_diff = font_small.render(onscreen_6, True, (255, 255, 255))
-        text6_width = text6_diff.get_width()
+        onscreen1_time = font_big.render(text_1_time, True, (255, 255, 255))
+        onscreen2_pylons = font_small.render(text_2_pylons, True, (255, 255, 255))
+        onscreen3_misses = font_small.render(text_3_misses, True, (255, 255, 255))
+        onscreen3_width = onscreen3_misses.get_width()
+        onscreen4_instruct = font_small.render(text_4_instructions, True, (255, 57, 52))
+        onscreen4_width = onscreen4_instruct.get_width()
+        onscreen5_best = font_small.render(text_5_best, True, (255, 255, 255))
+        onscreen5_width = onscreen5_best.get_width()
+        onscreen6_diff = font_small.render(text_6_diff, True, (255, 255, 255))
+        onscreen6_width = onscreen6_diff.get_width()
+        # TODO - would be cool to animate the logo on and off screen (with sound?)
 
-        screen.blit(text1_time, (10, 10))
-        screen.blit(text2_pylons, (10, 760))
-        screen.blit(text3_misses, (590 - text3_width, 760))
-        screen.blit(text4_begin, (300 - (text4_width / 2), 400))
-        screen.blit(text5_best, (590 - text5_width, 10))
-        screen.blit(text6_diff, (590 - text6_width, 35))
+        screen.blit(onscreen1_time, (10, 10))
+        screen.blit(onscreen2_pylons, (10, 760))
+        screen.blit(onscreen3_misses, (590 - onscreen3_width, 760))
+        screen.blit(onscreen4_instruct, (300 - (onscreen4_width / 2), 600))
+        screen.blit(onscreen5_best, (590 - onscreen5_width, 10))
+        screen.blit(onscreen6_diff, (590 - onscreen6_width, 35))
+        if launch_state:
+            screen.blit(onscreen_logo, (300 - (onscreen_logo.get_width() / 2), 400))
 
         pygame.display.flip()
-    
-    # plane.sndEngine.stop()
-    # return mouse cursor
-    # pygame.mouse.set_visible(True)
-    # return scoreboard.score
-    
+
 
 # main
+#   pre-existing main() from 'paper_airplane' base project. I never use done_playing bool.
 def main():
     done_playing = False
     # score = 0
