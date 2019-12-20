@@ -19,6 +19,7 @@ import sys
 import pygame
 import random
 from timeit import default_timer as timer
+
 pygame.init()
 
 # made this 3:4 (600 x 800), more like iPad and classic arcade games
@@ -55,12 +56,12 @@ class Plane(pygame.sprite.Sprite):
         # self.image.set_colorkey(tranColor)
         self.rect = self.image.get_rect()
         self.stage_plane()
-        self.x = 300                        # sets the start point in screen center
+        self.x = 300  # sets the start point in screen center
         self.y = 700
         # self.rect.center = (self.x, self.y)
         # self.delay = 3                      # unknown
         # self.pause = self.delay             # unknown
-        self.speed = 1                      # initially effects cloud speed while paused
+        self.speed = 1  # initially effects cloud speed while paused
         self.throttle = 0
         self.drag = 0
         self.dx = 0
@@ -71,7 +72,7 @@ class Plane(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
         # TODO - add result of altitude
-        self.altitude = 50                  # greater throttle = greater altitude, thus forcing you to throttle up/speed up to clear trees
+        self.altitude = 50  # greater throttle = greater altitude, thus forcing you to throttle up/speed up to clear trees
         # future feature: more throttle -> more heat
         #   +speed -> greater cooling... to a point
         self.engine_temp = 0
@@ -84,10 +85,10 @@ class Plane(pygame.sprite.Sprite):
         # changed to move TOWARDS cursor, not automatically track it.
         #   and this is my complicated method to give the plane some inertia
         #   when starting to move or switching directions
-        stick = (mouse_x - self.x) / 10                 # about +/- 30
-        if stick < self.dx:                             # stick to the left
-            self.dx -= abs(stick - self.dx) / 7        # larger number should make it more sluggish, was originally 5
-        else:                                           # stick to the right
+        stick = (mouse_x - self.x) / 10  # about +/- 30
+        if stick < self.dx:  # stick to the left
+            self.dx -= abs(stick - self.dx) / 7  # larger number should make it more sluggish, was originally 5
+        else:  # stick to the right
             self.dx += abs(stick - self.dx) / 7
         self.x += self.dx
         # still feel it moves left/right a little linearly. Would still like it to corner more progressively.
@@ -102,34 +103,34 @@ class Plane(pygame.sprite.Sprite):
         # greater speed -> exponentially greater drag
         self.drag = ((self.speed / 20) ** 2) * 20
         # turning also increases drag
-        self.drag += abs(self.dx) / 1.8             # tuning value
+        self.drag += abs(self.dx) / 1.8  # tuning value
         # new speed = old speed + (thrust - drag)
         self.speed += (self.throttle - self.drag) / 50
-        self.speed = max(5, self.speed)             # minimum speed of 5  (max is about 20)
+        self.speed = max(5, self.speed)  # minimum speed of 5  (max is about 20)
         # in addition to moving faster, greater speed also move player sprite higher up screen
         self.y = 800 - (self.speed * 20)
         self.rect.center = (self.x, self.y)
         # self.distance += int(self.speed)
 
         # changing plane graphic with cornering
-        if self.dx < -25:                           # going left
+        if self.dx < -25:  # going left
             self.image = self.image_LEFT30
         elif self.dx < -10:
             self.image = self.image_LEFT20
         elif self.dx < -4:
             self.image = self.image_LEFT10
-        elif self.dx > 4:                          # going right
+        elif self.dx > 4:  # going right
             self.image = self.image_RIGHT10
         elif self.dx > 10:
             self.image = self.image_RIGHT20
         elif self.dx > 25:
             self.image = self.image_RIGHT30
-        else:                                       # going more or less straight
+        else:  # going more or less straight
             self.image = self.image_LEVEL
 
     def stage_plane(self):
         self.pylons_missed = 0
-        self.x = 300                                # sets the start point in screen center
+        self.x = 300  # sets the start point in screen center
         self.y = 700
         self.rect.center = (self.x, self.y)
         self.speed = 1
@@ -322,35 +323,88 @@ class PlaneShadow(pygame.sprite.Sprite):
 #             self.dx *= -1
 
 
+# old function for reading best_time from a file, replaced with dictionary of best_time's
 # implementing a high score file to remember best time
 # https://techwithtim.net/tutorials/game-development-with-python/side-scroller-pygame/scoring-end-screen/
-def read_best_time():
-    f = open('scores.txt', 'r')                 # opens the file in read mode
-    file = f.readlines()                        # reads all the lines in as a list
-    best_time = float(file[0])                  # gets the first line of the file
-    return best_time
+# def read_best_time():
+#     f = open('scores.txt', 'r')                 # opens the file in read mode
+#     file = f.readlines()                        # reads all the lines in as a list
+#     best_time = float(file[0])                  # gets the first line of the file
+#     return best_time
 
 
-def save_best_time(best_time):
-    f = open('scores.txt', 'r')                 # opens the file in read mode
-    file = f.readlines()                        # reads all the lines in as a list
-    last = float(file[0])                       # gets the first line of the file
+# old function for saving best_time to file, replaced with dictionary that saves on quit
+# def save_best_time(best_time):
+#     f = open('scores.txt', 'r')                 # opens the file in read mode
+#     file = f.readlines()                        # reads all the lines in as a list
+#     last = float(file[0])                       # gets the first line of the file
+#
+#     if last > int(best_time):                   # sees if the current score is greater than the previous best
+#         f.close()                               # closes/saves the file
+#         file = open('scores.txt', 'w')          # reopens it in write mode
+#         file.write(str(best_time))              # writes the best score
+#         file.close()                            # closes/saves the file
 
-    if last > int(best_time):                   # sees if the current score is greater than the previous best
-        f.close()                               # closes/saves the file
-        file = open('scores.txt', 'w')          # reopens it in write mode
-        file.write(str(best_time))              # writes the best score
-        file.close()                            # closes/saves the file
+
+# creates a best_times dictionary and reads/writes it to file
+# TODO - would be cool in the future to store player initials
+class ScoresRecord:
+    def __init__(self):  # on creation of ScoresRecord dictionary...
+        self.scores_dictionary = {}
+        self.last_game_difficulty = 1
+        self.last_game_pylons = 10
+        try:  # check if file exists
+            with open('scores_file.txt', 'r') as f:  # if it does, read file into dictionary and read last game mode
+                print("File Found. Reading scores file into dictionary.")
+                for line in f:
+                    key, value = line.strip().split(": ")
+                    self.scores_dictionary[key] = value
+                temp_string = self.scores_dictionary['Current Mode']
+                self.last_game_difficulty = int(temp_string[:-2])
+                self.last_game_pylons = int(temp_string[1:])
+        except FileNotFoundError:  # if not, create default dictionary values, and create/write file
+            print("File not found. I will now create it.")
+            self.scores_dictionary = {
+                105: 15.0,
+                110: 20.0,
+                115: 30.0,
+                120: 40.0,
+                125: 50.0,
+                130: 60.0,
+                135: 70.0,
+                140: 80.0,
+                'Current Mode': 110
+            }
+            self.write()
+
+    # write method
+    def write(self):
+        print("Writing times to file")
+        # print(self.scores_dictionary)
+        file = open('scores_file.txt', 'w+')  # reopens it in write mode
+        # file.write(str(self.scores_dictionary))           # writes the best score
+        # old way was adding additional quotation marks to the data file
+        for k, v in self.scores_dictionary.items():  # this works better
+            file.write(str(k) + ': ' + str(v) + '\n')
+        file.close()  # closes/saves the file
+        print("File written and closed.")
 
 
 def game():
     pygame.display.set_caption('"Air Racer 7" - CIS151 Program 5: PyGame 2D Arcade Shooter  - Patrick Wheeler')
 
+    high_scores = ScoresRecord()
+    difficulty_setting = high_scores.last_game_difficulty
+    # print(type(difficulty_setting))
+    starting_num_pylons = high_scores.last_game_pylons
+    # print(type(starting_num_pylons))
+    game_mode = difficulty_setting * 100 + starting_num_pylons
+
     is_initially_paused = True
-    launch_state = True                         # used for game logotype display only on game launch
+    launch_state = True  # used for game logotype display only on game launch
     # pygame.key.set_repeat()                   # not used
-    new_game_pylon_total = 15
-    pylons_to_go_this_game = new_game_pylon_total
+
+    pylons_to_go_this_game = starting_num_pylons
     onscreen_logo = pygame.image.load("images/logotype.png")
 
     # create my sprites
@@ -383,22 +437,28 @@ def game():
     clock_is_running = False
     elapsed_time = start_time
     # best_time = 0
-    best_time = read_best_time()
+    # best_time = read_best_time()
+    best_time = float(high_scores.scores_dictionary[str(game_mode)])
+    # TODO - there is a bug here when the scores_file.txt is first created
+    #   when first created (first run with no file) this str() causes a crash
+    #   but on subsequent runs, the lack of the str() will cause a crash instead
     difference = 0
 
     clock = pygame.time.Clock()
     keep_going = True
     while keep_going:
         clock.tick(30)
-        pygame.mouse.set_visible(True)      # changed from False
+        pygame.mouse.set_visible(True)  # changed from False
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                high_scores.write()
                 pygame.display.quit()
                 pygame.quit()
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
                 if (event.mod & pygame.KMOD_META and event.key == pygame.K_q) or event.key == pygame.K_ESCAPE:
                     # 'quit' command
+                    high_scores.write()
                     pygame.display.quit()
                     pygame.quit()
                     sys.exit()
@@ -413,17 +473,32 @@ def game():
                         plane.engine_sound_high.set_volume(0)
                         plane.engine_sound_high.play(loops=-1, maxtime=0, fade_ms=500)
                     elif event.key == pygame.K_LEFT:
-                        # TODO - future home of game options (increment pylons by 5, easy/med/advanced)
-                        print("left")
+                        # changes game length of next game after resetting
+                        # increase pylons_to_go_this_game
+                        pylons_to_go_this_game = pylons_to_go_this_game - 5 if pylons_to_go_this_game >= 10 else 40
+                        starting_num_pylons = pylons_to_go_this_game
+                        pylon_left.reset_pylon(pylons_to_go_this_game)  # renumber the pylons
+                        pylon_right.reset_pylon(pylons_to_go_this_game)
+                        game_mode = difficulty_setting * 100 + starting_num_pylons  # new game mode
+                        high_scores.scores_dictionary['Current Mode'] = game_mode
+                        best_time = float(high_scores.scores_dictionary[str(game_mode)])  # read new best time
+                        # onscreen displays update automatically
                     elif event.key == pygame.K_RIGHT:
-                        print("right")
+                        pylons_to_go_this_game = pylons_to_go_this_game + 5 if pylons_to_go_this_game < 40 else 5
+                        starting_num_pylons = pylons_to_go_this_game
+                        pylon_left.reset_pylon(pylons_to_go_this_game)
+                        pylon_right.reset_pylon(pylons_to_go_this_game)
+                        game_mode = difficulty_setting * 100 + starting_num_pylons
+                        high_scores.scores_dictionary['Current Mode'] = game_mode
+                        best_time = float(high_scores.scores_dictionary[str(game_mode)])
                     elif event.key == pygame.K_UP:
+                        # TODO - future home of game options (easy/med/advanced)
                         print("up")
                     elif event.key == pygame.K_DOWN:
                         print("down")
                 elif not clock_is_running and event.key == pygame.K_r:
                     # 'reset' command
-                    pylons_to_go_this_game = new_game_pylon_total
+                    pylons_to_go_this_game = starting_num_pylons
                     plane.stage_plane()
                     # move shadow
                     pshadow_sprites.update(plane.x, plane.y, plane.speed)
@@ -446,11 +521,12 @@ def game():
             plane_sprites.update()
             pshadow_sprites.update(plane.x, plane.y, plane.speed)
             ground_sprites.update(plane.speed)
-            pylon_sprites.update(plane.speed, plane.x, plane.y, pylons_to_go_this_game, plane.pylons_missed, pylon_left.x, pylon_right.x)
+            pylon_sprites.update(plane.speed, plane.x, plane.y, pylons_to_go_this_game, plane.pylons_missed,
+                                 pylon_left.x, pylon_right.x)
 
             # collision detection between plane and pylons
             if pygame.sprite.spritecollide(plane, pylon_sprites, False, pygame.sprite.collide_mask):
-                plane.speed -= 0.4                  # slows the plane down while colliding
+                plane.speed -= 0.4  # slows the plane down while colliding
 
             # adds a little wind effect when passing through clouds
             if pygame.sprite.spritecollide(plane, cloud_sprites, False, pygame.sprite.collide_mask):
@@ -489,9 +565,12 @@ def game():
                 plane.engine_sound_high.fadeout(400)
                 clock_is_running = False
                 difference = elapsed_time - best_time
+                # if best time...
                 if elapsed_time < best_time or best_time == 0:
                     best_time = elapsed_time
-                    save_best_time(best_time)
+                    # save_best_time(best_time)
+                    # new score class object
+                    high_scores.scores_dictionary[str(difficulty_setting * 100 + starting_num_pylons)] = best_time
                 # should also land the airplane now
                 # TODO - land the airplane
                 """
